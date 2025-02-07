@@ -22,3 +22,5 @@ Tryckknappar – Enkel användarinteraktion.
 
 Automatiserad bevattning av växter.
 Tidstyrd aktivering av vattenrelaterade enheter.
+
+Demo video: https://www.youtube.com/watch?v=M9EEjFETcJs
