@@ -8,11 +8,13 @@ Automatisk pumpstyrning – Startar pumpen vid den inställda tiden.
 Manuell avstängning – Håll in knappen i 1 sekund för att stoppa pumpen.
 Användarvänlig display – OLED-skärm visar aktuell tid och alarmtid.
 Blinkande indikator – Visar vilken del av alarmet som justeras.
+
 🔹 Hårdvara
 RTC DS3231 – Håller koll på tiden även vid strömavbrott.
 OLED SSD1306 – Visar information tydligt och kompakt.
 Relämodul – Styr pumpens på- och avslag.
 Tryckknappar – Enkel användarinteraktion.
+
 🔹 Möjliga Användningsområden
 Automatiserad bevattning av växter.
 Tidstyrd aktivering av vattenrelaterade enheter.
