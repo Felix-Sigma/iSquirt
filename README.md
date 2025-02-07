@@ -1,5 +1,6 @@
 iSquirt 💦 
-iSquirt är ett smart automatiserat system för att kontrollera en vattenpump baserat på en programmerbar alarmtid. 
+
+är ett smart automatiserat system för att kontrollera en vattenpump baserat på en programmerbar alarmtid. 
 Projektet kombinerar en realtidsklocka (RTC), en OLED-skärm och ett relä för att styra en pump.
 
   Funktioner
