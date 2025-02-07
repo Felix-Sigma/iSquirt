@@ -1,0 +1,175 @@
+/*
+* Name: iSquirt
+* Author: Felix Fagrell 
+* Date: 2025-02-07
+* Description: iSquirt är ett smart automatiserat system för att kontrollera en vattenpump baserat på en programmerbar alarmtid. 
+* Projektet kombinerar en realtidsklocka (RTC), en OLED-skärm och ett relä för att styra en pump.
+*/
+
+#include <Wire.h> 
+#include <RTClib.h>
+#include <U8glib.h>
+
+U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);
+RTC_DS3231 rtc;
+
+// Pin definitions
+const int INCREASE_BTN = 1;    // Digital pin 1
+const int SELECT_BTN = 2;      // Digital pin 2
+const int DECREASE_BTN = 3;    // Digital pin 3
+const int PUMP_RELAY = 4;      // Digital pin 4
+
+// Time variables
+int alarmHours = 7;
+int alarmMinutes = 0;
+bool alarmActive = false;
+int currentDigit = 0;  // 0 = hours, 1 = minutes
+bool settingAlarm = false;
+unsigned long lastBlink = 0;
+bool blinkState = true;  // Start visible
+bool buttonWasPressed = false;
+unsigned long buttonPressTime = 0;
+
+void setup() {
+  // Initialize pins
+  pinMode(INCREASE_BTN, INPUT_PULLUP);
+  pinMode(SELECT_BTN, INPUT_PULLUP);
+  pinMode(DECREASE_BTN, INPUT_PULLUP);
+  pinMode(PUMP_RELAY, OUTPUT);
+  digitalWrite(PUMP_RELAY, LOW);
+
+  // Initialize RTC
+  Wire.begin();
+  rtc.begin();
+  
+  // Initialize display
+  if (u8g.getMode() == U8G_MODE_R3G3B2) {
+    u8g.setColorIndex(255);
+  } else if (u8g.getMode() == U8G_MODE_GRAY2BIT) {
+    u8g.setColorIndex(3);
+  } else if (u8g.getMode() == U8G_MODE_BW) {
+    u8g.setColorIndex(1);
+  }
+  
+  u8g.setFont(u8g_font_unifont);
+}
+
+void loop() {
+  DateTime now = rtc.now();
+  
+  // Button press detection with release requirement
+  if (digitalRead(SELECT_BTN) == LOW) {
+    if (!buttonWasPressed) {
+      buttonPressTime = millis();
+      buttonWasPressed = true;
+    }
+    
+    // Enter setting mode after 3 second press
+    if (millis() - buttonPressTime > 3000 && !settingAlarm) {
+      settingAlarm = true;
+      currentDigit = 0;  // Start with hours
+      lastBlink = millis();  // Reset blink timer
+      blinkState = true;  // Start visible
+    }
+    // Turn off pump after 1 second press
+    else if (millis() - buttonPressTime > 1000 && alarmActive) {
+      alarmActive = false;
+      digitalWrite(PUMP_RELAY, LOW);
+    }
+  } else {
+    // Button was released
+    if (buttonWasPressed) {
+      // If we're in setting mode and it was a short press
+      if (settingAlarm && (millis() - buttonPressTime < 1000)) {
+        currentDigit++;
+        if (currentDigit > 1) {  // Exit setting mode after minutes
+          settingAlarm = false;
+          currentDigit = 0;
+        }
+      }
+      buttonWasPressed = false;
+      delay(50);  // Debounce
+    }
+  }
+
+  // Alarm setting mode
+  if (settingAlarm) {
+    handleAlarmSetting();
+  }
+
+  // Check if alarm should be triggered
+  if (!settingAlarm && now.hour() == alarmHours && now.minute() == alarmMinutes && !alarmActive) {
+    alarmActive = true;
+    digitalWrite(PUMP_RELAY, HIGH); // Start pump
+  }
+
+  // Blink timing - update at the start of each second
+  if (settingAlarm && (millis() - lastBlink >= 200)) {
+    blinkState = !blinkState;
+    lastBlink = millis();
+  }
+
+  // Update display
+  updateDisplay(now);
+}
+
+void handleAlarmSetting() {
+  // Increase button
+  if (digitalRead(INCREASE_BTN) == LOW) {
+    if (currentDigit == 0) {
+      alarmHours = (alarmHours + 1) % 24;
+    } else {
+      alarmMinutes = (alarmMinutes + 1) % 60;
+    }
+    delay(200);
+  }
+  
+  // Decrease button
+  if (digitalRead(DECREASE_BTN) == LOW) {
+    if (currentDigit == 0) {
+      alarmHours = (alarmHours - 1 + 24) % 24;
+    } else {
+      alarmMinutes = (alarmMinutes - 1 + 60) % 60;
+    }
+    delay(200);
+  }
+}
+
+void updateDisplay(DateTime now) {
+  u8g.firstPage();
+  do {
+    // Display current time on top half
+    u8g.setPrintPos(0, 20);
+    u8g.print("Time:");
+    u8g.setPrintPos(0, 35);
+    if (now.hour() < 10) u8g.print("0");
+    u8g.print(now.hour());
+    u8g.print(":");
+    if (now.minute() < 10) u8g.print("0");
+    u8g.print(now.minute());
+
+    // Display alarm time on bottom half
+    u8g.setPrintPos(0, 50);
+    u8g.print("Alarm:");
+    u8g.setPrintPos(0, 63);
+    
+    // Display hours - blink if setting hours
+    if (!settingAlarm || currentDigit != 0 || blinkState) {
+      if (alarmHours < 10) u8g.print("0");
+      u8g.print(alarmHours);
+    } else {
+      u8g.print("  ");
+    }
+    
+    u8g.print(":");
+    
+    // Display minutes - blink if setting minutes
+    if (!settingAlarm || currentDigit != 1 || blinkState) {
+      if (alarmMinutes < 10) u8g.print("0");
+      u8g.print(alarmMinutes);
+    } else {
+      u8g.print("  ");
+    }
+    
+  } while (u8g.nextPage());
+}
